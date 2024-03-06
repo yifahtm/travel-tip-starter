@@ -1,19 +1,19 @@
 import { utilService } from './util.service.js'
 import { storageService } from './async-storage.service.js'
 
-// const sampleLoc = {
-//     id: 'GEouN',
-//     name: 'Dahab, Egypt',
-//     rate: 5,
-//     geo: {
-//         address: 'Dahab, South Sinai, Egypt',
-//         lat: 28.5096676,
-//         lng: 34.5165187,
-//         zoom: 11
-//     },
-//     createdAt: 1706562160181,
-//     updatedAt: 1706562160181
-// }
+const Loc = {
+    id: 'GEouN',
+    name: 'Dahab, Egypt',
+    rate: 5,
+    geo: {
+        address: 'Dahab, South Sinai, Egypt',
+        lat: 28.5096676,
+        lng: 34.5165187,
+        zoom: 11
+    },
+    createdAt: 1706562160181,
+    updatedAt: 1706562160181
+}
 
 const PAGE_SIZE = 5
 const DB_KEY = 'locs'
@@ -54,8 +54,9 @@ function query() {
                 locs.sort((p1, p2) => (p1.rate - p2.rate) * gSortBy.rate)
             } else if (gSortBy.name !== undefined) {
                 locs.sort((p1, p2) => p1.name.localeCompare(p2.name) * gSortBy.name)
+            } else if (gSortBy.creation !== undefined) {
+                locs.sort((p1, p2) => (p1.creation - p2.creation) * gSortBy.creation)
             }
-
             return locs
         })
 }
