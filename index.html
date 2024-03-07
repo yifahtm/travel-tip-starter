@@ -14,6 +14,7 @@
         <section class="selected-loc">
             <h2>Location: <span class="loc-name"></span> <span class="loc-rate"></span></h2>
             <h4 class="loc-address"></h4>
+            <span class="loc-distance"></span>
             <button onclick="app.onCopyLoc()">Copy location</button>
             <button onclick="app.onShareLoc()">Share location</button>
             <input name="loc-copier" />
@@ -27,6 +28,27 @@
     </header>
     <main>
         <div class="map"></div>
+        <dialog id="locationDialog">
+            <form method="dialog">
+                <h2 id="dialogTitle">Add Location</h2>
+                <div>
+                    <label for="locationName">Name:</label>
+                    <input type="text" id="locationName" name="name" required>
+                </div>
+                <div>
+                    <label for="locationRate">Rate:</label>
+                    <input type="number" id="locationRate" name="rate" min="1" max="5" required>
+                </div>
+                <div>
+                    <input type="hidden" id="locationGeo" name="geo">
+                </div>
+                <menu>
+                    <button value="cancel">Cancel</button>
+                    <button id="saveLocation" value="default">Save</button>
+                </menu>
+            </form>
+        </dialog>
+
         <div>
             <section class="locs-container">
                 <section class="loc-filter">

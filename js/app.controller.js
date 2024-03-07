@@ -18,6 +18,9 @@ window.app = {
     onSetFilterBy,
 }
 
+let gUserPos = null
+let gCurrentLocation = null
+
 function onInit() {
     loadAndRenderLocs()
 
@@ -37,6 +40,7 @@ function renderLocs(locs) {
 
     var strHTML = locs.map(loc => {
         const className = (loc.id === selectedLocId) ? 'active' : ''
+        const distance = gUserPos ? ` | Distance: ${utilService.getDistance(gUserPos, loc.geo, 'K')} km` : ''
         return `
         <li class="loc ${className}" data-id="${loc.id}">
             <h4>  
@@ -96,39 +100,54 @@ function onSearchAddress(ev) {
         })
 }
 
-function onAddLoc(geo) {
-    const locName = prompt('Loc name', geo.address || 'Just a place')
-    if (!locName) return
+//Its messy, but adding an event listener here worked
+document.getElementById('locationDialog').addEventListener('submit', function (event) {
+    event.preventDefault()
+    const form = event.target
+    const geo = JSON.parse(form.locationGeo.value || '{}')
 
     const loc = {
-        name: locName,
-        rate: +prompt(`Rate (1-5)`, '3'),
-        geo
+        id: gCurrentLocation?.id,
+        name: form.locationName.value,
+        rate: parseInt(form.locationRate.value, 10),
+        geo: geo
     }
-    locService.save(loc)
-        .then((savedLoc) => {
-            flashMsg(`Added Location (id: ${savedLoc.id})`)
-            utilService.updateQueryParams({ locId: savedLoc.id })
-            loadAndRenderLocs()
-        })
-        .catch(err => {
-            console.error('OOPs:', err)
-            flashMsg('Cannot add location')
-        })
+
+    locService.save(loc).then(savedLoc => {
+        flashMsg(`Location ${savedLoc.id ? 'updated' : 'added'} successfully`)
+        loadAndRenderLocs()
+        document.getElementById('locationDialog').close()
+    }).catch(err => {
+        console.error('Error:', err)
+        flashMsg('Error saving location')
+    })
+    gCurrentLocation = null
+})
+
+function openLocationDialog(geo = null) {
+    const dialog = document.getElementById('locationDialog')
+    const title = document.getElementById('dialogTitle')
+    const nameInput = document.getElementById('locationName')
+    const rateInput = document.getElementById('locationRate')
+    const geoInput = document.getElementById('locationGeo')
+    title.textContent = gCurrentLocation ? 'Update Location' : 'Add Location'
+    nameInput.value = gCurrentLocation ? gCurrentLocation.name : ''
+    rateInput.value = gCurrentLocation ? gCurrentLocation.rate : '3'
+    geoInput.value = geo ? JSON.stringify(geo) : '{}'
+
+    dialog.showModal()
 }
 
-function loadAndRenderLocs() {
-    locService.query()
-        .then(renderLocs)
-        .catch(err => {
-            console.error('OOPs:', err)
-            flashMsg('Cannot load locations')
-        })
+function onAddLoc(geo) {
+    gCurrentLocation = null
+    openLocationDialog(geo)
 }
 
 function onPanToUserPos() {
     mapService.getUserPosition()
         .then(latLng => {
+            gUserPos = latLng
+            console.log("User position is:", gUserPos)
             mapService.panTo({ ...latLng, zoom: 15 })
             unDisplayLoc()
             loadAndRenderLocs()
@@ -143,22 +162,34 @@ function onPanToUserPos() {
 function onUpdateLoc(locId) {
     locService.getById(locId)
         .then(loc => {
-            const rate = prompt('New rate?', loc.rate)
-            if (rate !== loc.rate) {
-                loc.rate = rate
-                locService.save(loc)
-                    .then(savedLoc => {
-                        flashMsg(`Rate was set to: ${savedLoc.rate}`)
-                        loadAndRenderLocs()
-                    })
-                    .catch(err => {
-                        console.error('OOPs:', err)
-                        flashMsg('Cannot update location')
-                    })
-
-            }
+            gCurrentLocation = loc
+            openLocationDialog()
+        })
+        .catch(err => {
+            console.error('Oops:', err)
+            flashMsg('Cannot load location for update')
         })
 }
+
+function flashMsg(msg) {
+    const el = document.querySelector('.user-msg')
+    el.innerText = msg
+    el.classList.add('open')
+    setTimeout(() => {
+        el.classList.remove('open')
+    }, 3000)
+}
+
+function loadAndRenderLocs() {
+    locService.query()
+        .then(renderLocs)
+        .catch(err => {
+            console.error('OOPs:', err)
+            flashMsg('Cannot load locations')
+        })
+}
+
+// Th
 
 function onSelectLoc(locId) {
     return locService.getById(locId)
@@ -182,6 +213,10 @@ function displayLoc(loc) {
     el.querySelector('.loc-rate').innerHTML = '★'.repeat(loc.rate)
     el.querySelector('[name=loc-copier]').value = window.location
     el.classList.add('show')
+
+    const distance = gUserPos ? `Distance: ${utilService.getDistance(gUserPos, loc.geo, 'K')} km` : ''
+    const elDistance = document.querySelector('.loc-distance')
+    if (elDistance) elDistance.innerText = distance
 
     utilService.updateQueryParams({ locId: loc.id })
 }
@@ -210,15 +245,6 @@ function onShareLoc() {
         url
     }
     navigator.share(data)
-}
-
-function flashMsg(msg) {
-    const el = document.querySelector('.user-msg')
-    el.innerText = msg
-    el.classList.add('open')
-    setTimeout(() => {
-        el.classList.remove('open')
-    }, 3000)
 }
 
 function getLocIdFromQueryParams() {
